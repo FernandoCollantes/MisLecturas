@@ -8,7 +8,7 @@ const api = axios.create({
     },
 });
 
-// Request Interceptor: Attach Token
+// Interceptor de Petición: Inyectar Token automáticamente
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -20,14 +20,24 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle Global Errors (e.g., 401 Unauthorized)
+// Interceptor de Respuesta: Gestión de errores globales (Token expirado)
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Si el servidor responde 401 (No autorizado)
         if (error.response && error.response.status === 401) {
+            
+            // EVITAR BUCLE: Si ya estamos en login, no hacemos nada
+            if (window.location.pathname.includes('/login')) {
+                return Promise.reject(error);
+            }
+
+            console.warn("Sesión expirada o inválida (401). Limpiando storage...");
             localStorage.removeItem('token');
-            // Optional: Trigger a redirect or global event here if needed
-            // window.location.href = '/login'; 
+            localStorage.removeItem('user');
+            
+            // Redirigir al login
+            window.location.href = '/login?expired=true';
         }
         return Promise.reject(error);
     }
