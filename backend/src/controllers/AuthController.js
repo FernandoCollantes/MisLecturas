@@ -2,53 +2,60 @@ const AuthService = require('../services/AuthService');
 
 class AuthController {
     static async register(req, res) {
+        // Log para ver qué llega desde el frontend
+        console.log("📥 Petición de registro recibida:", req.body);
+
         try {
             const { username, email, password } = req.body;
+            
             if (!username || !email || !password) {
+                console.warn("⚠️ Campos faltantes en el registro");
                 return res.status(400).json({ message: 'Todos los campos son obligatorios' });
             }
 
             const user = await AuthService.register({ username, email, password });
+            
+            console.log("✅ Usuario registrado con éxito en la DB:", email);
             res.status(201).json({ message: 'Usuario registrado con éxito', user });
         } catch (error) {
-            console.error("Error en Registro:", error.message);
+            // Este log es vital: aquí veremos el error real de MySQL si AuthService falla
+            console.error("❌ ERROR DETALLADO EN REGISTRO:", error); 
+            
             if (error.message === 'El usuario ya existe') {
                 return res.status(409).json({ message: error.message });
             }
-            res.status(500).json({ message: 'Error interno del servidor' });
+            res.status(500).json({ 
+                message: 'Error interno del servidor',
+                details: error.message // Enviamos el detalle para depurar más rápido
+            });
         }
     }
 
     static async login(req, res) {
+        console.log("📥 Intento de login para:", req.body.email);
         try {
             const { email, password } = req.body;
             
-            // Validación básica
             if (!email || !password) {
                 return res.status(400).json({ message: 'Email y contraseña son obligatorios' });
             }
 
-            // Llamada al servicio
             const result = await AuthService.login({ email, password });
             
-            // LOG DE DEPURACIÓN (Verás esto en la terminal de VSCode/Node)
-            console.log(`Login exitoso para: ${email}. Token generado: ${!!result.token}`);
-            
-            // Enviamos la respuesta exactamente como el frontend la espera
-            // result ya es { token: "...", user: {...} }
+            console.log(`✅ Login exitoso: ${email}`);
             res.status(200).json(result);
 
         } catch (error) {
-            console.error("Error en Login:", error.message);
+            console.error("❌ ERROR DETALLADO EN LOGIN:", error);
             
-            // Manejo de errores específico
             if (error.message === 'Credenciales inválidas') {
                 return res.status(401).json({ message: 'Email o contraseña incorrectos' });
-            } else if (error.message.includes('JWT_SECRET')) {
-                 return res.status(500).json({ message: 'Error de configuración en el servidor' });
             }
             
-            res.status(500).json({ message: 'Error interno del servidor' });
+            res.status(500).json({ 
+                message: 'Error interno del servidor',
+                details: error.message 
+            });
         }
     }
 }
